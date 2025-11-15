@@ -22,10 +22,11 @@ config.mrMaxForce = 200000;
 config.mrMaxCurrent = 2.0;              
 
 % --- Genetic Algorithm parameters (CRITICAL CHANGES) ---
-config.gaPopSize = 60;                  % Increased from 20 to 50
-config.gaMaxGenerations = 30;           % Increased from 10 to 30
-config.gaCrossoverProb = 0.85;          % Slightly increased
-config.gaMutationProb = 0.15;           % Increased for more exploration
+config.gaPopSize = 30;                  % Increased from 20 to 50
+config.gaMaxGenerations = 21;           % Increased from 10 to 30
+config.gaCrossoverProb = 0.9;          % Slightly increased
+config.gaMutationProb = 0.09;           % Increased for more exploration
+%config.elitismCount = 3;
 config.Q_min_log = 4;                   
 config.Q_max_log = 10;                  
 config.R_min_log = -4;                  
@@ -33,7 +34,7 @@ config.R_max_log = 2;
 
 % --- Reinforcement Learning parameters (MAJOR CHANGES) ---
 config.rlMaxEpisodes = 300;             % Increased from 25 to 100 (MINIMUM)
-config.rlMaxSteps = 3000;               % Reduced from 5000 to 2000 (faster episodes)
+config.rlMaxSteps = 2100;               % Reduced from 5000 to 2000 (faster episodes)
 config.rlLearningRate = 0.1;            % Increased from 0.01 to 0.1 (faster learning)
 config.rlGamma = 0.99;                  % Keep high for long-term planning
 
@@ -97,46 +98,94 @@ end
 %% 4. Plot Training Progress
 fprintf('4. Plotting training progress...\n');
 
-% Create separate figures for RL and GA progress
+% Create separate figures for RL progress
 if isfield(training_info, 'rl_episode_rewards')
-    figure('Position', [100, 100, 600, 400]);
-    
-    % Ensure rewards are positive and increasing
     rewards = training_info.rl_episode_rewards;
     
-    % Plot actual rewards
-    plot(1:length(rewards), rewards, 'b-', 'LineWidth', 1.5, 'DisplayName', 'Episode Reward');
-    hold on;
+    % Figure 1: Episode Rewards Only (Blue Line)
+    figure('Position', [100, 100, 600, 400]);
+    plot(1:length(rewards), rewards, 'b-', 'LineWidth', 3);
+    title('RL Training: Episode Rewards');
+    xlabel('Episode');
+    ylabel('Total Reward');
+    grid on;
     
-    % Add trend line
+    % Add performance annotation for Episode Rewards
+    max_reward = max(rewards);
+    min_reward = min(rewards);
+    final_reward = rewards(end);
+    avg_reward = mean(rewards);
+    
+    % if final_reward > avg_reward
+    %     text(0.4, 0.9, 'GOOD FINAL PERFORMANCE', 'Units', 'normalized', ...
+    %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'green');
+    % else
+    %     text(0.4, 0.9, 'FINAL PERFORMANCE NEEDS IMPROVEMENT', 'Units', 'normalized', ...
+    %          'FontSize', 10, 'FontWeight', 'bold', 'Color', 'orange');
+    % end
+    
+    % Figure 2: Trend Only (Red Line)
+    figure('Position', [750, 100, 600, 400]);
+    
     if length(rewards) > 5
         x = 1:length(rewards);
         
-        % Use moving average for smoother trend
-        window_size = min(5, floor(length(rewards)/4));
+        % % Calculate moving average for trend
+        window_size = min(5, floor(length(rewards)/6));
         smoothed_rewards = movmean(rewards, window_size);
         
-        title('RL Training: Trends')
-        plot(x, smoothed_rewards, 'r-', 'LineWidth', 1.5, 'DisplayName', 'Trend (Smoothed)');
+        % Plot trend as red line only
+        plot(x, smoothed_rewards, 'r-', 'LineWidth', 3);
+        title('RL Training: Trend Analysis (Smoothed)');
+        xlabel('Episode');
+        ylabel('Reward');
+        grid on;
         
-        % Add performance indicators
-        max_reward = max(rewards);
-        min_reward = min(rewards);
-        final_reward = rewards(end);
+        % % Add trend direction annotation
+        % trend_slope = (smoothed_rewards(end) - smoothed_rewards(1)) / length(rewards);
+        % if trend_slope > 0
+        %     text(0.4, 0.9, '📈 UPWARD TREND', 'Units', 'normalized', ...
+        %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'blue');
+        % else
+        %     text(0.4, 0.9, '📉 DOWNWARD TREND', 'Units', 'normalized', ...
+        %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'red');
+        % end
         
-        % % Plot target line for good performance
-        % target_level = 0.7 * max_reward;
-        % plot([1, length(rewards)], [target_level, target_level], 'g--', ...
-        %      'LineWidth', 1, 'DisplayName', 'Good Performance Level');
+        % Add trend statistics
+        % text(0.05, 0.8, sprintf('Trend Slope: %.4f', trend_slope), 'Units', 'normalized', ...
+        %      'FontSize', 10, 'BackgroundColor', 'white');
+        
+    else
+        % If not enough data for proper trend analysis
+        plot(1:length(rewards), rewards, 'r-', 'LineWidth', 2.5);
+        title('RL Training: Raw Data (Insufficient for Trend)');
+        xlabel('Episode');
+        ylabel('Reward');
+        grid on;
+        text(0.3, 0.5, 'Need more episodes for trend analysis', ...
+             'Units', 'normalized', 'FontSize', 11, 'HorizontalAlignment', 'center');
     end
-    
-    title('RL Training');
-    xlabel('Episode number');
-    ylabel('Total Reward');
+end
+
+% GA Fitness Plot (Separate Figure)
+if isfield(training_info, 'ga_fitness_history')
+    figure('Position', [1400, 100, 600, 400]);
+    plot(1:length(training_info.ga_fitness_history), training_info.ga_fitness_history, 'g-', 'LineWidth', 2);
+    title('GA Optimization: Best Fitness');
+    xlabel('Generation');
+    ylabel('Fitness (Max Drift)');
     grid on;
-    legend('Location', 'best');
     
-    hold off;
+    % % Add GA performance annotation
+    % ga_fitness = training_info.ga_fitness_history;
+    % improvement = ga_fitness(1) - ga_fitness(end);
+    % if improvement > 0
+    %     text(0.4, 0.9, '✓ GA CONVERGING', 'Units', 'normalized', ...
+    %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'green');
+    % else
+    %     text(0.4, 0.9, '⚠ GA STAGNATING', 'Units', 'normalized', ...
+    %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'orange');
+    % end
 end
 
 %% 5. Export to Simulink and Run Final Simulation
