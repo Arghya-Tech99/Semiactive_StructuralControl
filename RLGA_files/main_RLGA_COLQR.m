@@ -1,16 +1,12 @@
 %% Main Script for RLGA-CO-LQR Control of Building with MR Damper
-% Purpose: Orchestrate the setup, run the two-stage RL-GA optimization 
-% (which opens the RL Training Monitor), execute the final controlled simulation, 
-% and analyze the results.
 
 clear; close all; clc;
-
-disp('================================================================');
+disp('*******************************************************************');
 disp('   RL-GA Co-LQR Optimization for MR Damper Control (Main Script)');
-disp('================================================================');
+disp('*******************************************************************');
 
 %% 1. Configuration Parameters
-% --- Building & Damper Parameters ---
+% --- Building & MR Damper Parameters ---
 config.nStories = 10;                    
 config.storyMass = 3.5e4;               
 config.storyStiffness = 6.5e7;          
@@ -21,7 +17,7 @@ config.driftLimit = config.storyHeight / 400;
 config.mrMaxForce = 200000;             
 config.mrMaxCurrent = 2.0;              
 
-% --- Genetic Algorithm parameters (CRITICAL CHANGES) ---
+% --- Genetic Algorithm parameters ---
 config.gaPopSize = 30;                  % Increased from 20 to 50
 config.gaMaxGenerations = 21;           % Increased from 10 to 30
 config.gaCrossoverProb = 0.9;          % Slightly increased
@@ -32,11 +28,11 @@ config.Q_max_log = 10;
 config.R_min_log = -4;                  
 config.R_max_log = 2;                   
 
-% --- Reinforcement Learning parameters (MAJOR CHANGES) ---
+% --- Reinforcement Learning parameters ---
 config.rlMaxEpisodes = 300;             % Increased from 25 to 100 (MINIMUM)
 config.rlMaxSteps = 2100;               % Reduced from 5000 to 2000 (faster episodes)
 config.rlLearningRate = 0.1;            % Increased from 0.01 to 0.1 (faster learning)
-config.rlGamma = 0.99;                  % Keep high for long-term planning
+config.rlGamma = 0.99;                  % High for long-term planning
 
 % --- Seismic excitation parameters ---
 config.pga = 0.3;                       
@@ -75,7 +71,7 @@ assignin('base', 'state_space', state_space);
 assignin('base', 'building', building);
 assignin('base', 'input_excite', input_excite);
 
-%% 3. Run RL-GA Optimization
+%% 3. Run RLGA Optimization
 fprintf('3. Starting RL-GA Optimization...\n');
 
 % Use the simplified RLGA optimization
@@ -98,11 +94,11 @@ end
 %% 4. Plot Training Progress
 fprintf('4. Plotting training progress...\n');
 
-% Create separate figures for RL progress
+% Creation of figures for RL progress
 if isfield(training_info, 'rl_episode_rewards')
     rewards = training_info.rl_episode_rewards;
     
-    % Figure 1: Episode Rewards Only (Blue Line)
+    % Figure 1: Episode Rewards (Blue Line)
     figure('Position', [100, 100, 600, 400]);
     plot(1:length(rewards), rewards, 'b-', 'LineWidth', 3);
     title('RL Training: Episode Rewards');
@@ -110,60 +106,29 @@ if isfield(training_info, 'rl_episode_rewards')
     ylabel('Total Reward');
     grid on;
     
-    % Add performance annotation for Episode Rewards
-    max_reward = max(rewards);
-    min_reward = min(rewards);
-    final_reward = rewards(end);
-    avg_reward = mean(rewards);
+    % % Add performance annotation for Episode Rewards
+    % max_reward = max(rewards);
+    % min_reward = min(rewards);
+    % final_reward = rewards(end);
+    % avg_reward = mean(rewards);
     
-    % if final_reward > avg_reward
-    %     text(0.4, 0.9, 'GOOD FINAL PERFORMANCE', 'Units', 'normalized', ...
-    %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'green');
-    % else
-    %     text(0.4, 0.9, 'FINAL PERFORMANCE NEEDS IMPROVEMENT', 'Units', 'normalized', ...
-    %          'FontSize', 10, 'FontWeight', 'bold', 'Color', 'orange');
-    % end
-    
-    % Figure 2: Trend Only (Red Line)
+    % Figure 2: Trend (Red Line)
     figure('Position', [750, 100, 600, 400]);
     
     if length(rewards) > 5
         x = 1:length(rewards);
         
-        % % Calculate moving average for trend
+        % Calculate moving average for trend
         window_size = min(5, floor(length(rewards)/6));
         smoothed_rewards = movmean(rewards, window_size);
         
-        % Plot trend as red line only
+        % Plot trend as red line 
         plot(x, smoothed_rewards, 'r-', 'LineWidth', 3);
         title('RL Training: Trend Analysis (Smoothed)');
         xlabel('Episode');
         ylabel('Reward');
         grid on;
-        
-        % % Add trend direction annotation
-        % trend_slope = (smoothed_rewards(end) - smoothed_rewards(1)) / length(rewards);
-        % if trend_slope > 0
-        %     text(0.4, 0.9, '📈 UPWARD TREND', 'Units', 'normalized', ...
-        %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'blue');
-        % else
-        %     text(0.4, 0.9, '📉 DOWNWARD TREND', 'Units', 'normalized', ...
-        %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'red');
-        % end
-        
-        % Add trend statistics
-        % text(0.05, 0.8, sprintf('Trend Slope: %.4f', trend_slope), 'Units', 'normalized', ...
-        %      'FontSize', 10, 'BackgroundColor', 'white');
-        
-    else
-        % If not enough data for proper trend analysis
-        plot(1:length(rewards), rewards, 'r-', 'LineWidth', 2.5);
-        title('RL Training: Raw Data (Insufficient for Trend)');
-        xlabel('Episode');
-        ylabel('Reward');
-        grid on;
-        text(0.3, 0.5, 'Need more episodes for trend analysis', ...
-             'Units', 'normalized', 'FontSize', 11, 'HorizontalAlignment', 'center');
+
     end
 end
 
@@ -175,17 +140,6 @@ if isfield(training_info, 'ga_fitness_history')
     xlabel('Generation');
     ylabel('Fitness (Max Drift)');
     grid on;
-    
-    % % Add GA performance annotation
-    % ga_fitness = training_info.ga_fitness_history;
-    % improvement = ga_fitness(1) - ga_fitness(end);
-    % if improvement > 0
-    %     text(0.4, 0.9, '✓ GA CONVERGING', 'Units', 'normalized', ...
-    %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'green');
-    % else
-    %     text(0.4, 0.9, '⚠ GA STAGNATING', 'Units', 'normalized', ...
-    %          'FontSize', 12, 'FontWeight', 'bold', 'Color', 'orange');
-    % end
 end
 
 %% 5. Export to Simulink and Run Final Simulation
