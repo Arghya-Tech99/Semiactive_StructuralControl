@@ -1,0 +1,99 @@
+flowchart TD
+    %% Input Section
+    A[RL Training Input] --> A1[Q & R Parameters from GA]
+    A --> A2[State-Space Matrices A, Bc, E]
+    A --> A3[Building Configuration]
+    A --> A4[RL Hyperparameters]
+    
+    %% Initialization Phase
+    A1 & A2 & A3 & A4 --> B[Phase 1: Initialization]
+    B --> B1[Initialize Q-table 10×3<br>with optimistic values 5-10]
+    B --> B2[Set RL Parameters<br>α=0.1, γ=0.95, ε=1.0]
+    B --> B3[Initialize State = 5]
+    
+    B1 & B2 & B3 --> C[Phase 2: Episode Loop<br>1 to 300 episodes]
+    
+    %% Episode Setup
+    C --> D[Reset Episode Variables]
+    D --> D1[episode_reward = 0]
+    D --> D2[state = 5]
+    D --> D3[Calculate Generation/Episode Boosts]
+    
+    D1 & D2 & D3 --> E[Phase 3: Step Loop<br>1 to 2100 steps]
+    
+    %% Action Selection
+    E --> F{Action Selection<br>ε-Greedy Policy}
+    F -->|Random < ε| G1[Random Action<br>Exploration]
+    F -->|Else| G2[Greedy Action from Q-table<br>Exploitation]
+    
+    G1 --> H[Environment Step]
+    G2 --> H
+    
+    %% Environment Step
+    H --> H1[Map Action to Control Force<br>0.3/0.6/0.9 × mrMaxForce]
+    H --> H2[Calculate Effective Performance<br>with Boosts]
+    H --> H3[Simulate Drift Reduction]
+    H --> H4[Compute Next State 1-10<br>based on drift ratio]
+    
+    %% Reward Calculation
+    H1 & H2 & H3 & H4 --> I[Reward Calculation]
+    I --> I1[Base Reward = 30]
+    I --> I2[Drift Performance = 80 ×<br>1 - final_drift/max_drift]
+    I --> I3[Control Efficiency = 20 ×<br>1 - force/max_force - 0.6]
+    I --> I4[Episode Progression = 15 ×<br>episode/max_episodes]
+    I --> I5[Performance Bonus = 25 ×<br>effective_performance]
+    I --> I6[State Quality = 10 ×<br>10 - state / 10]
+    I --> I7[Apply Minimum Reward Guarantee<br>40 to 100 increasing]
+    
+    I1 & I2 & I3 & I4 & I5 & I6 & I7 --> J[Calculate Total Reward]
+    
+    %% Q-learning Update
+    J --> K[Q-table Update]
+    K --> K1[TD Error = reward + γ ×<br>max_next_Q - current_Q]
+    K --> K2[Qs,a = Qs,a + α × TD_error]
+    
+    %% Step Completion
+    K1 & K2 --> L[State Transition<br>Move to next state]
+    L --> M[Accumulate Reward<br>episode_reward += reward]
+    
+    M --> N{Step < 2100?}
+    N -->|Yes| E
+    N -->|No| O[Phase 4: Episode Completion]
+    
+    %% Episode Completion
+    O --> O1[Decay Exploration<br>ε = maxε_min, ε × 0.97]
+    O --> O2[Apply Reward Boosts]
+    O2 --> O21[Base: 50-150 increasing]
+    O2 --> O22[Learning: 20 × 1-ε]
+    O2 --> O23[Progression: 5 × episode]
+    O --> O3[Store Episode Results]
+    
+    O1 & O2 & O3 --> P{Episode < 300?}
+    P -->|Yes| C
+    P -->|No| Q[Phase 5: Training Completion]
+    
+    %% Output Section
+    Q --> Q1[Calculate Fitness<br>fitness = 100000 / total_reward + 100]
+    Q --> Q2[Return Trained Q-table]
+    Q --> Q3[Return Episode Rewards History]
+    Q --> Q4[Return Performance Metrics]
+    
+    %% Final Output
+    Q1 & Q2 & Q3 & Q4 --> R[RL Training Output]
+    R --> R1[Fitness Value for GA Selection<br>lower is better]
+    R --> R2[Trained Q-table]
+    R --> R3[Episode Rewards History]
+    R --> R4[Q-R Combination Performance]
+    
+    %% Styling
+    classDef input fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef phase fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef output fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef process fill:#fff3e0,stroke:#e65100,stroke-width:1px
+    classDef decision fill:#ffebee,stroke:#c62828,stroke-width:1px
+    
+    class A,A1,A2,A3,A4 input
+    class B,C,E,O,Q phase
+    class R,R1,R2,R3,R4 output
+    class D,F,H,I,K,L,M,J process
+    class N,P decision
